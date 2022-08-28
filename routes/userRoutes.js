@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-
+// const cloudinary = require('./../utils/cloudinary');
+const upload = require('./../utils/multer');
 
 const {
 	addNewUser, 
@@ -16,17 +17,22 @@ const {
 	profile
 } = require('./../controllers/usersCon');
 
-const {verifyToken, decode} = require('./../token/token')
+const {verifyToken, verifyAdmin, decode} = require('./../token/token')
 
 //create
-router.post('/addUser', (req, res) => {
+router.post('/addUser', upload.single('image'), async (req, res) => {
 	try{
-		addNewUser(req.body).then(response => res.send(response))
+		// const result = await cloudinary.uploader.upload(req.file.path)
+		// res.json(result)
+
+		await addNewUser(req.body, req.file.path).then(response => res.send(response))
 	}catch(err){
 		res.json(err)
 	}
 })
 
+
+//user login
 router.post('/login', (req, res) => {
 	try{
 		login(req.body).then(response => res.send(response))
@@ -36,7 +42,7 @@ router.post('/login', (req, res) => {
 })
 
 // get all users
-router.get('/allUsers', verifyToken, (req, res) => {
+router.get('/allUsers', verifyAdmin, (req, res) => {
 	try{
 		allUsers(req.body).then(response => res.send(response))
 	}catch(err){
@@ -45,7 +51,7 @@ router.get('/allUsers', verifyToken, (req, res) => {
 })
 
 // get only active users
-router.get('/activeUsers', (req, res) => {
+router.get('/activeUsers', verifyAdmin, (req, res) => {
 	try{
 		activeUsers().then(response => res.send(response))
 	}catch(err){
@@ -54,7 +60,7 @@ router.get('/activeUsers', (req, res) => {
 })
 
 //get all not active users - unActiveusers
-router.get('/unActiveUsers', (req, res) => {
+router.get('/unActiveUsers', verifyAdmin, (req, res) => {
 	try{
 		unActiveUsers().then(response => res.send(response))
 	}catch(err){
@@ -62,8 +68,8 @@ router.get('/unActiveUsers', (req, res) => {
 	}
 })
 
-// update users not available
-router.patch('/archive/:userId', (req, res) => {
+// archive user account
+router.patch('/archive/:userId', verifyAdmin, (req, res) => {
 	try{
 		archive(req.params.userId).then(response => res.send(response))
 	}catch(err){
@@ -71,8 +77,8 @@ router.patch('/archive/:userId', (req, res) => {
 	}
 })
 
-// update users to available 
-router.patch('/unArchive/:userId', (req, res) => {
+// unarchive user account 
+router.patch('/unArchive/:userId', verifyAdmin, (req, res) => {
 	try{
 		unArchive(req.params.userId).then(response => res.send(response))
 	}catch(err){
@@ -81,7 +87,7 @@ router.patch('/unArchive/:userId', (req, res) => {
 })
 
 //delete a user
-router.delete('/deleteUser/:userId', (req, res) => {
+router.delete('/deleteUser/:userId', verifyToken, (req, res) => {
 	try{
 		deleteUser(req.params.userId).then(response => res.send(response))
 	}catch(err){
@@ -108,10 +114,10 @@ router.patch('/isUser/:userId', (req, res) => {
 })
 
 //update user profile
-router.put('/profile', verifyToken, (req, res) => {
+router.put('/profile', upload.single('image'), async (req, res) => {
 	try{
 		let id = decode(req.headers.authorization)._id
-		profile(id, req.body).then(response => res.send(response))
+		await profile(id, req.body, req.file.path).then(response => res.send(response))
 
 	}catch(err){
 		res.json(err)

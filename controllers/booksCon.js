@@ -1,17 +1,21 @@
 const Book = require('./../models/Book');
+const cloudinary = require('./../utils/cloudinary');
 
 // create
-module.exports.addNewBook = (params) => {
-	const {name, author, genre, isAvailable} = params
+module.exports.addNewBook = async (params, filepath) => {
+
+	const result = await cloudinary.uploader.upload(filepath)
 
 	const newBook = new Book({
-		name,
-		author,
-		genre,
-		isAvailable
+		name: params.name,
+		author: params.author,
+		genre: params.genre,
+		isAvailable: params.isAvailable,
+		avatar: result.secure_url,
+		cloudinary_id: result.public_id
 	})
 
-	return Book.findOne({name: name}).then(books => {
+	return Book.findOne({name: params.name}).then(books => {
 		if(books === null){
 			return newBook.save().then(result => result)
 		} else {
@@ -70,12 +74,42 @@ module.exports.unArchive = (bookId) => {
 }
 
 //delete a book
-module.exports.deleteBook = (bookId) => {
+module.exports.deleteBook = async (bookId) => {
+
 	//find the book using id and delete it from db
-	return Book.findByIdAndDelete(bookId).then(response => {
-		console.log(response)
+	return await Book.findByIdAndDelete(bookId).then(response => {
+
+		//delete the cloudinary id using the user object found from mongoose method delete
+		cloudinary.uploader.destroy(response.cloudinary_id)
+
 		return response ? true : {message: 'Request unsuccessful. Please try again.'}
 	})
+}
+
+
+//update book info
+module.exports.updateBook = async (bookId, params, filepath) => {
+
+	//find the book
+	let findBook = await Book.findById(bookId);
+
+	//destroy the image using cloudinary id from found user
+	await cloudinary.uploader.destroy(findBook.cloudinary_id);
+
+	// upload the new image
+	let result = await cloudinary.uploader.upload(filepath)
+
+	// attached the new cloudinary id and url to the update
+	const updatedBook = {
+		name: params.name,
+		author: params.author,
+		genre: params.genre,
+		avatar: result.secure_url,
+		cloudinary_id: result.public_id
+	}
+
+	// update the user
+	return await Book.findByIdAndUpdate(bookId, updatedBook, {new: true}).then(book => console.log(book))
 }
 
 

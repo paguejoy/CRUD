@@ -1,17 +1,20 @@
 const User = require('./../models/User');
 const {accessToken} = require('./../token/token');
 const CryptoJS = require("crypto-js");
+const cloudinary = require('./../utils/cloudinary');
 
 // create
-module.exports.addNewUser = (params) => {
-	const {username, password} = params
+module.exports.addNewUser = async (params, filepath) => {
+	const result = await cloudinary.uploader.upload(filepath)
 
 	const newUser = new User({
-		username: username,
-		password: CryptoJS.AES.encrypt(password, process.env.JWT_SECRET).toString()
+		username: params.username,
+		password: CryptoJS.AES.encrypt(params.password, process.env.JWT_SECRET).toString(),
+		avatar: result.secure_url,
+		cloudinary_id: result.public_id
 	})
 
-	return User.findOne({username: username}).then(users => {
+	return User.findOne({username: params.username}).then(users => {
 		if(users === null || users.length <= 0){
 			return newUser.save().then(result => result)
 		} else {
@@ -20,12 +23,12 @@ module.exports.addNewUser = (params) => {
 	})
 }
 
+
 //login user
 module.exports.login = (params) => {
 	const {username, password} = params
 
 	return User.findOne({username: username}).then(user => {
-		console.log(user)
 		if(user === null){
 			return `No ${username} exists`
 		} else {
@@ -34,7 +37,6 @@ module.exports.login = (params) => {
 			const dpw = decrypted.toString(CryptoJS.enc.Utf8);
 
 			if(dpw === password){
-				console.log('if')
 				//invoke createToken function to return token
 				return {token: accessToken(user)}
 			}else{
@@ -96,9 +98,13 @@ module.exports.unArchive = (userId) => {
 }
 
 //delete a User
-module.exports.deleteUser = (userId) => {
+module.exports.deleteUser = async (userId) => {
 	//find the User using id and delete it from db
-	return User.findByIdAndDelete(userId).then(response => {
+	return await User.findByIdAndDelete(userId).then(response => {
+
+		//delete the cloudinary id using the user object found from mongoose method delete
+		cloudinary.uploader.destroy(response.cloudinary_id)
+
 		return response ? true : {message: 'Request unsuccessful. Please try again.'}
 	})
 }
@@ -117,11 +123,25 @@ module.exports.isUser = (userId) => {
 }
 
 //update user profile
-module.exports.profile = (userId, params) => {
+module.exports.profile = async (userId, params, filepath) => {
+
+	//find the user
+	let findUser = await User.findById(userId);
+
+	//destroy the image using cloudinary id from found user
+	await cloudinary.uploader.destroy(findUser.cloudinary_id);
+
+	// upload the new image
+	let result = await cloudinary.uploader.upload(filepath)
+
+	// attached the new cloudinary id and url to the update
 	const updateProfile = {
 		username: params.username,
-		password: CryptoJS.AES.encrypt(params.password, process.env.JWT_SECRET).toString()
+		password: CryptoJS.AES.encrypt(params.password, process.env.JWT_SECRET).toString(),
+		avatar: result.secure_url,
+		cloudinary_id: result.public_id
 	}
 
-	return User.findByIdAndUpdate(userId, updateProfile, {new: true}).then(user => user)
+	// update the user
+	return await User.findByIdAndUpdate(userId, updateProfile, {new: true}).then(user => user)
 }

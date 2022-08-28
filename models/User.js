@@ -17,6 +17,12 @@ const userSchema = new mongoose.Schema({
 	isActive: {
 		type: Boolean,
 		default: true
+	},
+	avatar: {
+		type: String
+	},
+	cloudinary_id: {
+		type: String
 	}
 })
 

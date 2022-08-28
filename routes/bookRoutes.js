@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const {verifyToken, verifyAdmin} = require('./../token/token');
+const upload = require('./../utils/multer');
 
 const {
 	addNewBook, 
@@ -8,13 +10,14 @@ const {
 	archive,
 	unActiveBooks,
 	unArchive,
-	deleteBook
+	deleteBook,
+	updateBook
 } = require('./../controllers/booksCon');
 
 //create
-router.post('/addBook', (req, res) => {
+router.post('/addBook', upload.single('image'), verifyAdmin, async (req, res) => {
 	try{
-		addNewBook(req.body).then(response => res.send(response))
+		addNewBook(req.body, req.file.path).then(response => res.send(response))
 	}catch(err){
 		res.json(err)
 	}
@@ -66,9 +69,20 @@ router.patch('/unArchive/:bookId', (req, res) => {
 })
 
 //delete a book
-router.delete('/deleteBook/:bookId', (req, res) => {
+router.delete('/deleteBook/:bookId', async (req, res) => {
 	try{
 		deleteBook(req.params.bookId).then(response => res.send(response))
+	}catch(err){
+		res.json(err)
+	}
+})
+
+
+//update book info
+router.put('/updateBook/:bookId', upload.single('image'), async (req, res) => {
+	try{
+		await updateBook(req.params.bookId, req.body, req.file.path).then(response => res.send(response))
+
 	}catch(err){
 		res.json(err)
 	}

@@ -16,6 +16,12 @@ const bookSchema = new mongoose.Schema({
 	isAvailable: {
 		type: Boolean,
 		default: true
+	},
+	avatar: {
+		type: String
+	},
+	cloudinary_id: {
+		type: String
 	}
 })
 
